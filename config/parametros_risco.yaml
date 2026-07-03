@@ -1,0 +1,83 @@
+# Parâmetros iniciais do motor de risco.
+# Cada indicador tem: peso (contribuição para o índice 0-100), limiares e
+# a descrição neutra usada nos alertas (evitamos o termo "corrupção";
+# reportamos "índice de risco" com evidências, conforme a abordagem do
+# projeto de referência).
+
+versao: 1
+escala:
+  minimo: 0
+  maximo: 100
+  faixas:
+    - {ate: 25, rotulo: "risco baixo"}
+    - {ate: 55, rotulo: "risco moderado — recomenda verificação"}
+    - {ate: 80, rotulo: "risco alto — recomenda auditoria"}
+    - {ate: 100, rotulo: "risco muito alto — recomenda encaminhamento a órgão de controle"}
+
+indicadores:
+  vinculo_societario:
+    peso: 20
+    descricao: "Agente público ou parente de 1º/2º grau consta no quadro societário de empresa contratada pelo órgão de vínculo."
+    parametros:
+      graus_parentesco: 2
+
+  empresa_recem_criada:
+    peso: 12
+    descricao: "Empresa venceu licitação com menos de N dias de existência."
+    parametros:
+      dias_minimos_existencia: 180
+
+  sobrepreco:
+    peso: 15
+    descricao: "Preço unitário contratado acima da mediana de referência de mercado."
+    parametros:
+      limiar_percentual_acima_mediana: 30   # % acima da mediana p/ disparar
+      fonte_referencia: "Painel de Preços (compras.gov.br)"
+
+  servidor_fantasma:
+    peso: 15
+    descricao: "Mesmo CPF com vínculos remuneratórios simultâneos geograficamente ou funcionalmente incompatíveis."
+    parametros:
+      distancia_km_incompativel: 150
+      max_vinculos_simultaneos: 2
+
+  emenda_direcionada:
+    peso: 12
+    descricao: "Emenda parlamentar destinada a ente cuja execução beneficia empresa doadora da campanha do autor."
+    parametros:
+      janela_anos_doacao: 4
+
+  evolucao_patrimonial:
+    peso: 10
+    descricao: "Crescimento do patrimônio declarado ao TSE entre eleições acima do compatível com a renda pública conhecida."
+    parametros:
+      limiar_crescimento_percentual: 100    # dobrar patrimônio entre pleitos dispara
+      considerar_inflacao: true             # deflacionar via série do Banco Central
+
+  doador_contratado:
+    peso: 8
+    descricao: "Doador de campanha (PF/PJ) celebrou contratos com o ente após a posse do candidato eleito."
+    parametros:
+      janela_meses_apos_posse: 24
+
+  fracionamento:
+    peso: 8
+    descricao: "Sequência de contratações do mesmo objeto/fornecedor logo abaixo do limite de dispensa de licitação."
+    parametros:
+      limite_dispensa_reais: 59906.02       # Lei 14.133/2021, valor atualizado — ajustar por decreto vigente
+      percentual_proximidade: 90            # contratos >= 90% do limite contam
+      minimo_ocorrencias_ano: 3
+
+  empresa_fachada:
+    peso: 12
+    descricao: "Perfil societário atípico: capital social ínfimo frente ao contrato, sem empregados, endereço residencial ou CNAE incompatível."
+    parametros:
+      razao_maxima_contrato_capital: 100    # contrato > 100x capital social dispara
+      exigir_dois_sinais: true              # precisa de >= 2 sinais para pontuar
+
+  concentracao_fornecedor:
+    peso: 8
+    descricao: "Fornecedor único concentra fração desproporcional das contratações de um órgão no período."
+    parametros:
+      percentual_limiar: 40                 # % do valor total do órgão no ano
+      minimo_contratos_orgao: 10
