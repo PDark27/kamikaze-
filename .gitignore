@@ -7,4 +7,3 @@ fotos/
 cartoes/
 *.graphml
 .venv/
-echo 'TRANSPARENCIA_API_KEY=sua-chave-aqui' > .env
