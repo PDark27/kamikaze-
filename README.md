@@ -81,7 +81,26 @@ export ANTHROPIC_API_KEY=...
 fiscaliza analisar --cpf-mascarado '***123456**' --nome "FULANO DE TAL" --uf SP
 fiscaliza empresa 00.000.000/0001-91
 fiscaliza grafo --saida grafo.graphml   # abre no Gephi / importa no Neo4j
+fiscaliza candidato --nome "ZÉ EXEMPLO" --ano 2024 --uf SP --cargo 13
 ```
+
+## Fotos e nome de urna dos candidatos (TSE)
+
+O comando `fiscaliza candidato` busca no DivulgaCandContas do TSE por **nome de
+urna ou nome civil completo** (sem precisar de acentos), baixa a **foto oficial
+da urna** para `fotos/<ano>/<sqcand>.jpg` e gera um **cartão HTML autocontido**
+em `cartoes/` com foto, nome de urna em destaque, nome civil, partido/cargo e o
+índice de risco. Códigos de cargo comuns: 11 prefeito, 13 vereador, 6 deputado
+federal, 7 deputado estadual, 5 senador, 3 governador, 1 presidente.
+
+As fotos são dados públicos de divulgação oficial de candidatura (TSE). Use-as
+apenas nesse contexto de fiscalização; o cartão sempre inclui a nota de
+presunção de inocência.
+
+> Validação real (a API do TSE não é acessível de sandboxes com proxy):
+> rode na sua máquina `fiscaliza candidato --nome "<nome de urna>" --ano 2024
+> --uf <UF> --cargo 11` e confira a foto salva em `fotos/` e o cartão em
+> `cartoes/<sqcand>.html`.
 
 ## Referências sobre o caso Bruno César
 

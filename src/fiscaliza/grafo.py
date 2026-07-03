@@ -14,6 +14,8 @@ class GrafoDeRelacoes:
 
     # nós ---------------------------------------------------------------
     def pessoa(self, chave: str, nome: str, **atributos):
+        """Para candidatos, passe também nome_urna=<nome político nas urnas>
+        e foto=<caminho ou URL da foto oficial do TSE> como atributos do nó."""
         self.g.add_node(f"pessoa:{chave}", tipo="Pessoa", nome=nome, **atributos)
         return f"pessoa:{chave}"
 

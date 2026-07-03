@@ -35,6 +35,9 @@ memoria/
 ```markdown
 # <Nome / Razão Social>
 - Chave: <cpf mascarado | cnpj>
+- Nome de urna: <NOME POLÍTICO NAS URNAS>          # candidatos: sempre registrar
+- Nome civil completo: <NOME CIVIL>                # busca em outras bases usa este
+- Foto oficial: fotos/<ano>/<sqcand>.jpg           # via TSE.baixar_foto()
 - Índice de risco atual: <N>% (<faixa>)
 - Última atualização: <data>
 
@@ -64,6 +67,10 @@ memoria/
 - Registre também o que **inocenta**: um sinal explicado (ex.: empresa nova
   porém herdeira de outra) deve ser anotado e o índice recalculado para baixo.
 - CPFs sempre mascarados (`***XXXXXX**`), como o Portal da Transparência publica.
+- Candidatos têm **duas formas de nome**: registre ambas. O nome civil completo é a
+  chave para cruzar com Receita/Transparência; o nome de urna é o que vai em cartões
+  e comunicação. A foto oficial (dado público do TSE) entra no dossiê e no cartão
+  gerado por `fiscaliza.cartao.gerar_cartao`.
 
 ## Conexões entre dossiês
 

@@ -70,6 +70,51 @@ def analisar(nome: str = typer.Option(..., help="Nome do agente público/candida
 
 
 @app.command()
+def candidato(
+    nome: str = typer.Option(..., help="Nome de urna OU nome civil completo"),
+    ano: int = typer.Option(2024, help="Ano da eleição"),
+    uf: str = typer.Option(..., help="UF (ex.: SP) ou BR para presidente"),
+    cargo: int = typer.Option(13, help="Código do cargo TSE (11=prefeito, 13=vereador, 6=dep. federal...)"),
+    saida: str = typer.Option("cartoes", help="Diretório dos cartões HTML"),
+    com_ia: bool = typer.Option(False, help="Resumo via IA configurada"),
+):
+    """Busca candidato no TSE (foto oficial + nome de urna) e gera cartão HTML."""
+    from .cartao import gerar_cartao
+    from .fontes import TSE
+    from .risco import MotorDeRisco
+
+    tse = TSE()
+    detalhe = tse.buscar_candidato(ano, uf.upper(), nome, cargo)
+    if not detalhe:
+        typer.echo(f"Candidato '{nome}' não encontrado em {uf}/{ano} para o cargo {cargo}.")
+        raise typer.Exit(1)
+
+    ident = tse.identidade(detalhe)
+    foto = tse.baixar_foto(detalhe)
+
+    motor = MotorDeRisco()
+    bens = detalhe.get("bens") or []
+    total_bens = sum(float(b.get("valor") or 0) for b in bens)
+    resultado = motor.consolidar([])  # indicadores dependem de cruzamentos posteriores
+    resultado["contexto"] = {
+        **ident,
+        "total_bens_declarados": total_bens,
+        "foto_local": str(foto) if foto else None,
+    }
+
+    from pathlib import Path
+    cartao = gerar_cartao(ident, resultado, foto,
+                          Path(saida) / f"{ident['sqcand']}.html")
+    typer.echo(json.dumps(resultado, ensure_ascii=False, indent=2))
+    typer.echo(f"\nCartão gerado: {cartao}")
+
+    if com_ia and resultado["alertas"]:
+        from .llm import obter_provedor
+        typer.echo("\n--- Resumo da IA ---\n")
+        typer.echo(obter_provedor().explicar(resultado["alertas"]))
+
+
+@app.command()
 def grafo(saida: str = typer.Option("grafo.graphml", help="Arquivo GraphML de saída")):
     """Exporta um grafo de exemplo com o esquema de relações do projeto."""
     from .grafo import GrafoDeRelacoes
