@@ -87,11 +87,19 @@ fiscaliza web                                                       # app web em
 fiscaliza ingerir --conjunto-tse candidatos-2024                    # dumps em massa (na sua máquina)
 ```
 
-## Aplicativo web
+## Aplicativo instalável e gratuito (PWA)
 
-`fiscaliza web` sobe o app local (FastAPI, `webapp/`): busca por nome de urna ou
-civil, cartão do candidato com foto oficial e índice de risco, e grafo interativo
-de relações (vis-network). Endpoints JSON: `/api/candidato` e `/api/grafo/exemplo`.
+`fiscaliza web` sobe o app (FastAPI, `webapp/`): busca por nome de urna ou civil,
+cartão do candidato com foto oficial e índice de risco, e grafo interativo de
+relações (vis-network). Endpoints JSON: `/api/candidato` e `/api/grafo/exemplo`.
+
+O app é um **PWA de instalação gratuita**: hospedado em qualquer servidor (ou
+rodando localmente), o Chrome/Edge/Android oferece **"Instalar aplicativo" /
+"Adicionar à tela inicial"** — sem loja de aplicativos, sem custo, com ícone
+próprio e funcionamento em janela dedicada (manifesto em `/manifest.webmanifest`,
+service worker em `/sw.js` mantém a casca do app offline; os dados são sempre
+buscados frescos nas fontes oficiais). Identidade visual de jornalismo de dados,
+apartidária, com tema claro/escuro automático. Licença MIT (livre e gratuito).
 
 ## Ingestão em massa (estilo Neo4j)
 

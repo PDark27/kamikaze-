@@ -26,6 +26,24 @@ def test_home_200_e_nota_juridica():
     assert r.status_code == 200
     assert "presunção de inocência" in r.text
     assert "vis-network" in r.text  # CDN do grafo presente
+    assert 'rel="manifest"' in r.text  # PWA instalável
+
+
+def test_pwa_manifesto_sw_e_icone():
+    m = cliente.get("/manifest.webmanifest")
+    assert m.status_code == 200
+    dados = m.json()
+    assert dados["short_name"] == "Fiscaliza"
+    assert dados["display"] == "standalone"
+    assert dados["icons"]
+
+    sw = cliente.get("/sw.js")
+    assert sw.status_code == 200
+    assert "application/javascript" in sw.headers["content-type"]
+
+    icone = cliente.get("/icone.svg")
+    assert icone.status_code == 200
+    assert "image/svg+xml" in icone.headers["content-type"]
 
 
 def test_grafo_exemplo():
