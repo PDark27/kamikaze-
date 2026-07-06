@@ -1,0 +1,11 @@
+# Deploy com 1 clique no plano gratuito do Render (https://render.com):
+# New + > Blueprint > aponte para este repositório.
+services:
+  - type: web
+    name: fiscaliza
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: TRANSPARENCIA_API_KEY
+        sync: false   # defina no painel do Render; nunca commitar a chave

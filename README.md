@@ -101,6 +101,15 @@ service worker em `/sw.js` mantém a casca do app offline; os dados são sempre
 buscados frescos nas fontes oficiais). Identidade visual de jornalismo de dados,
 apartidária, com tema claro/escuro automático. Licença MIT (livre e gratuito).
 
+### Publicar de graça (endereço público com HTTPS)
+
+1. **Render (recomendado, 1 clique)**: crie conta gratuita em render.com →
+   *New + → Blueprint* → aponte para este repositório (o `render.yaml` já
+   configura tudo) → defina `TRANSPARENCIA_API_KEY` no painel. Em minutos o
+   app ganha um endereço `https://fiscaliza-*.onrender.com` e o botão
+   **Instalar aplicativo** aparece para qualquer visitante.
+2. **Qualquer host com Docker**: `docker build -t fiscaliza . && docker run -p 8000:8000 fiscaliza`.
+
 ## Ingestão em massa (estilo Neo4j)
 
 `src/fiscaliza/ingestao/` baixa os dumps públicos completos (TSE via CKAN, CNPJ
