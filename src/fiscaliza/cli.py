@@ -115,6 +115,74 @@ def candidato(
 
 
 @app.command()
+def dossie(
+    nome: str = typer.Option(..., help="Nome de urna OU nome civil completo"),
+    ano: int = typer.Option(2024, help="Ano da eleição"),
+    uf: str = typer.Option(..., help="UF (ex.: SP)"),
+    cargo: int = typer.Option(13, help="Código do cargo TSE (11=prefeito, 13=vereador...)"),
+    cnpj: list[str] = typer.Option([], help="CNPJs relacionados a cruzar (repetível)"),
+    salvar: bool = typer.Option(False, help="Persistir no segundo cérebro (memoria/)"),
+    com_ia: bool = typer.Option(False, help="Resumo via IA configurada"),
+):
+    """Dossiê completo: TSE + Receita + Transparência → índice de risco + markdown."""
+    from .dossie import dossie_para_markdown, montar_dossie
+
+    resultado = montar_dossie(nome, ano, uf.upper(), cargo, cnpjs_relacionados=list(cnpj))
+    md = dossie_para_markdown(resultado)
+    typer.echo(md)
+
+    if salvar and resultado.get("encontrado", True):
+        from .memoria import Memoria
+
+        risco = resultado.get("risco", {})
+        caminho = Memoria().salvar_dossie(
+            "pessoas",
+            resultado.get("identidade", {}).get("nome_completo") or nome,
+            md,
+            risco.get("indice_de_risco_percentual"),
+            risco.get("faixa"),
+        )
+        typer.echo(f"\nDossiê salvo em {caminho}")
+
+    if com_ia and resultado.get("risco", {}).get("alertas"):
+        from .llm import obter_provedor
+
+        typer.echo("\n--- Resumo da IA ---\n")
+        typer.echo(obter_provedor().explicar(resultado["risco"]["alertas"]))
+
+
+@app.command()
+def web(
+    host: str = typer.Option("127.0.0.1", help="Endereço de escuta"),
+    porta: int = typer.Option(8000, help="Porta"),
+):
+    """Sobe o aplicativo web local (busca de candidato + cartão + grafo)."""
+    import uvicorn
+
+    typer.echo(f"Fiscaliza web em http://{host}:{porta}/ (Ctrl+C para sair)")
+    uvicorn.run("webapp.app:app", host=host, port=porta)
+
+
+@app.command()
+def ingerir(
+    conjunto_tse: str = typer.Option("", help="Id do conjunto CKAN do TSE a baixar (ex.: candidatos-2024)"),
+    destino: str = typer.Option("dados", help="Diretório de destino dos dumps"),
+):
+    """Baixa dumps públicos em massa (execute na sua máquina; exige rede .gov.br)."""
+    from pathlib import Path
+
+    from .ingestao import DumpsTSE
+
+    if not conjunto_tse:
+        typer.echo("Informe --conjunto-tse (ex.: candidatos-2024). "
+                   "Depois carregue com BancoLocal e exporte com ExportadorNeo4j.")
+        raise typer.Exit(1)
+    dumps = DumpsTSE()
+    baixados = dumps.baixar_recursos(conjunto_tse, Path(destino) / "tse")
+    typer.echo(f"{len(baixados)} arquivo(s) em {destino}/tse")
+
+
+@app.command()
 def grafo(saida: str = typer.Option("grafo.graphml", help="Arquivo GraphML de saída")):
     """Exporta um grafo de exemplo com o esquema de relações do projeto."""
     from .grafo import GrafoDeRelacoes

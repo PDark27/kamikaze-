@@ -82,7 +82,30 @@ fiscaliza analisar --cpf-mascarado '***123456**' --nome "FULANO DE TAL" --uf SP
 fiscaliza empresa 00.000.000/0001-91
 fiscaliza grafo --saida grafo.graphml   # abre no Gephi / importa no Neo4j
 fiscaliza candidato --nome "ZÉ EXEMPLO" --ano 2024 --uf SP --cargo 13
+fiscaliza dossie --nome "ZÉ EXEMPLO" --uf SP --cargo 13 --salvar   # dossiê completo → memoria/
+fiscaliza web                                                       # app web em http://127.0.0.1:8000
+fiscaliza ingerir --conjunto-tse candidatos-2024                    # dumps em massa (na sua máquina)
 ```
+
+## Aplicativo web
+
+`fiscaliza web` sobe o app local (FastAPI, `webapp/`): busca por nome de urna ou
+civil, cartão do candidato com foto oficial e índice de risco, e grafo interativo
+de relações (vis-network). Endpoints JSON: `/api/candidato` e `/api/grafo/exemplo`.
+
+## Ingestão em massa (estilo Neo4j)
+
+`src/fiscaliza/ingestao/` baixa os dumps públicos completos (TSE via CKAN, CNPJ
+da Receita), carrega em SQLite local (`BancoLocal`, com zip/latin-1 em lotes) e
+gera CSVs no formato do `neo4j-admin database import` (`ExportadorNeo4j`) — o
+caminho para análises em escala com o Estado inteiro como grafo.
+
+## Segundo cérebro programático
+
+`fiscaliza.memoria.Memoria` persiste dossiês em `memoria/` com índice idempotente
+e bloqueio de CPF não mascarado (`ValueError`); `fiscaliza.dossie.montar_dossie`
+cruza TSE + Receita + Transparência tolerando fontes fora do ar e gera o markdown
+no formato da skill `segundo-cerebro`.
 
 ## Fotos e nome de urna dos candidatos (TSE)
 
