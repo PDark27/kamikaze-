@@ -107,6 +107,26 @@ def test_candidato_erro_http_503_mostra_codigo(monkeypatch):
     assert "divulgacandcontas.tse.jus.br" in d["detalhe"]
 
 
+def test_diagnostico_ok(monkeypatch):
+    monkeypatch.setattr(TSE, "get_json", lambda self, *a, **k: {"eleicoes": []})
+    r = cliente.get("/api/diagnostico")
+    assert r.status_code == 200
+    assert r.json()["tse"] == "ok"
+
+
+def test_diagnostico_falha_de_rede(monkeypatch):
+    def boom(self, *a, **k):
+        raise httpx.ConnectTimeout("tempo esgotado")
+
+    monkeypatch.setattr(TSE, "get_json", boom)
+    r = cliente.get("/api/diagnostico")
+    assert r.status_code == 503
+    d = r.json()
+    assert d["tse"] == "falha"
+    assert "ConnectTimeout" in d["detalhe"]
+    assert "IP brasileiro" in d["conclusao"]
+
+
 def test_cliente_base_envia_user_agent_de_navegador():
     from fiscaliza.fontes.base import ClienteBase
 

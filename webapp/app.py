@@ -66,6 +66,42 @@ def grafo_exemplo() -> dict:
     return _grafo_exemplo()
 
 
+@app.get("/api/diagnostico")
+def api_diagnostico():
+    """Testa a conectividade do servidor com o TSE e devolve o veredito.
+
+    Abra /api/diagnostico no navegador para saber se a hospedagem consegue
+    alcançar o TSE (geobloqueio de IP estrangeiro é a suspeita usual quando
+    o app roda fora do Brasil).
+    """
+    import time as _time
+
+    tse = TSE(timeout_segundos=12)
+    inicio = _time.monotonic()
+    try:
+        tse.get_json("/eleicao/ordinarias")
+        return {
+            "tse": "ok",
+            "latencia_ms": int((_time.monotonic() - inicio) * 1000),
+            "conclusao": "O servidor alcança o TSE; buscas devem funcionar.",
+        }
+    except httpx.HTTPStatusError as e:
+        return JSONResponse(status_code=503, content={
+            "tse": "falha",
+            "detalhe": f"HTTP {e.response.status_code} ao consultar {e.request.url.host}",
+            "conclusao": "O TSE respondeu recusando este servidor "
+                         "(provável bloqueio de IP estrangeiro).",
+        })
+    except (httpx.HTTPError, ConnectionError, OSError) as e:
+        return JSONResponse(status_code=503, content={
+            "tse": "falha",
+            "detalhe": f"{type(e).__name__}: {e}",
+            "conclusao": "O servidor não conseguiu conexão com o TSE "
+                         "(provável bloqueio de rede/geolocalização; "
+                         "considere hospedar em IP brasileiro).",
+        })
+
+
 @app.get("/api/candidato")
 def api_candidato(
     nome: str = Query(..., min_length=1),
@@ -73,7 +109,9 @@ def api_candidato(
     uf: str = Query(""),
     cargo: str = Query("vereador"),
 ):
-    tse = TSE()
+    # timeout curto: melhor um 503 com diagnóstico do que o proxy da
+    # hospedagem cortar a conexão e o navegador ver erro genérico
+    tse = TSE(timeout_segundos=20)
     codigo_cargo = CARGOS.get(cargo.lower().replace(" ", "_"), CARGOS["vereador"])
     try:
         detalhe = tse.buscar_candidato(ano, uf.upper(), nome, codigo_cargo)
@@ -390,7 +428,8 @@ async function buscar(ev){
   });
   let r, d;
   try { r = await fetch("/api/candidato?"+q); d = await r.json(); }
-  catch(e){ erro.textContent = "Sem conexão com o servidor local."; }
+  catch(e){ erro.textContent = "O servidor não respondeu. Verifique /api/diagnostico "
+      + "ou tente novamente em instantes."; }
   btn.disabled = false; btn.textContent = "Buscar";
   if(!r) return;
   if(!r.ok){

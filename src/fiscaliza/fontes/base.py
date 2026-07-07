@@ -22,11 +22,12 @@ _CABECALHOS_NAVEGADOR = {
 class ClienteBase:
     base_url: str = ""
 
-    def __init__(self, cabecalhos: dict | None = None, pausa_segundos: float = 0.5):
+    def __init__(self, cabecalhos: dict | None = None, pausa_segundos: float = 0.5,
+                 timeout_segundos: float = 60):
         self._http = httpx.Client(
             base_url=self.base_url,
             headers={**_CABECALHOS_NAVEGADOR, **(cabecalhos or {})},
-            timeout=60,
+            timeout=timeout_segundos,
             follow_redirects=True,
         )
         self._pausa = pausa_segundos
