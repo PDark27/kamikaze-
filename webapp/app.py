@@ -66,39 +66,56 @@ def grafo_exemplo() -> dict:
     return _grafo_exemplo()
 
 
+def _consultar_tse_cru(tse: TSE) -> httpx.Response:
+    """Consulta crua ao TSE (sem raise_for_status/parse), para diagnóstico."""
+    return tse._http.get("/eleicao/ordinarias")
+
+
 @app.get("/api/diagnostico")
 def api_diagnostico():
     """Testa a conectividade do servidor com o TSE e devolve o veredito.
 
     Abra /api/diagnostico no navegador para saber se a hospedagem consegue
     alcançar o TSE (geobloqueio de IP estrangeiro é a suspeita usual quando
-    o app roda fora do Brasil).
+    o app roda fora do Brasil). Mostra o status HTTP, o content-type e uma
+    amostra do corpo devolvido — o suficiente para diferenciar API saudável,
+    página de bloqueio e queda de rede. Nunca levanta 500: qualquer surpresa
+    vira relatório.
     """
     import time as _time
 
     tse = TSE(timeout_segundos=12)
     inicio = _time.monotonic()
     try:
-        tse.get_json("/eleicao/ordinarias")
-        return {
-            "tse": "ok",
-            "latencia_ms": int((_time.monotonic() - inicio) * 1000),
-            "conclusao": "O servidor alcança o TSE; buscas devem funcionar.",
-        }
-    except httpx.HTTPStatusError as e:
+        resposta = _consultar_tse_cru(tse)
+        latencia = int((_time.monotonic() - inicio) * 1000)
+        tipo = resposta.headers.get("content-type", "")
+        if resposta.status_code == 200 and "json" in tipo:
+            return {
+                "tse": "ok",
+                "latencia_ms": latencia,
+                "conclusao": "O servidor alcança o TSE; buscas devem funcionar.",
+            }
         return JSONResponse(status_code=503, content={
             "tse": "falha",
-            "detalhe": f"HTTP {e.response.status_code} ao consultar {e.request.url.host}",
-            "conclusao": "O TSE respondeu recusando este servidor "
-                         "(provável bloqueio de IP estrangeiro).",
+            "detalhe": f"HTTP {resposta.status_code}, content-type '{tipo}'",
+            "amostra_resposta": resposta.text[:300],
+            "latencia_ms": latencia,
+            "conclusao": (
+                "O TSE respondeu, mas não com a API (provável página de "
+                "bloqueio a IP estrangeiro/robô). Solução: hospedar em "
+                "servidor com IP brasileiro."
+            ),
         })
-    except (httpx.HTTPError, ConnectionError, OSError) as e:
+    except Exception as e:  # diagnóstico nunca pode virar 500
         return JSONResponse(status_code=503, content={
             "tse": "falha",
             "detalhe": f"{type(e).__name__}: {e}",
-            "conclusao": "O servidor não conseguiu conexão com o TSE "
-                         "(provável bloqueio de rede/geolocalização; "
-                         "considere hospedar em IP brasileiro).",
+            "conclusao": (
+                "O servidor não conseguiu conexão com o TSE (provável "
+                "bloqueio de rede/geolocalização; considere hospedar em "
+                "IP brasileiro)."
+            ),
         })
 
 
@@ -115,6 +132,15 @@ def api_candidato(
     codigo_cargo = CARGOS.get(cargo.lower().replace(" ", "_"), CARGOS["vereador"])
     try:
         detalhe = tse.buscar_candidato(ano, uf.upper(), nome, codigo_cargo)
+    except ValueError as e:  # resposta 200 porém não-JSON (página de bloqueio)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "erro": "fonte TSE indisponível",
+                "detalhe": "TSE devolveu conteúdo inesperado (não-JSON) — "
+                           "consulte /api/diagnostico",
+            },
+        )
     except (httpx.HTTPError, ConnectionError, OSError) as e:
         if isinstance(e, httpx.HTTPStatusError):
             diagnostico = (

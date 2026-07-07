@@ -107,24 +107,63 @@ def test_candidato_erro_http_503_mostra_codigo(monkeypatch):
     assert "divulgacandcontas.tse.jus.br" in d["detalhe"]
 
 
+def _resposta(status, conteudo, tipo):
+    req = httpx.Request("GET", "https://divulgacandcontas.tse.jus.br/x")
+    return httpx.Response(status, content=conteudo,
+                          headers={"content-type": tipo}, request=req)
+
+
 def test_diagnostico_ok(monkeypatch):
-    monkeypatch.setattr(TSE, "get_json", lambda self, *a, **k: {"eleicoes": []})
+    import webapp.app as wa
+
+    monkeypatch.setattr(
+        wa, "_consultar_tse_cru",
+        lambda tse: _resposta(200, b'{"eleicoes": []}', "application/json"),
+    )
     r = cliente.get("/api/diagnostico")
     assert r.status_code == 200
     assert r.json()["tse"] == "ok"
 
 
+def test_diagnostico_pagina_de_bloqueio(monkeypatch):
+    import webapp.app as wa
+
+    monkeypatch.setattr(
+        wa, "_consultar_tse_cru",
+        lambda tse: _resposta(200, b"<html>Access denied</html>", "text/html"),
+    )
+    r = cliente.get("/api/diagnostico")
+    assert r.status_code == 503
+    d = r.json()
+    assert d["tse"] == "falha"
+    assert "text/html" in d["detalhe"]
+    assert "Access denied" in d["amostra_resposta"]
+    assert "IP brasileiro" in d["conclusao"]
+
+
 def test_diagnostico_falha_de_rede(monkeypatch):
-    def boom(self, *a, **k):
+    import webapp.app as wa
+
+    def boom(tse):
         raise httpx.ConnectTimeout("tempo esgotado")
 
-    monkeypatch.setattr(TSE, "get_json", boom)
+    monkeypatch.setattr(wa, "_consultar_tse_cru", boom)
     r = cliente.get("/api/diagnostico")
     assert r.status_code == 503
     d = r.json()
     assert d["tse"] == "falha"
     assert "ConnectTimeout" in d["detalhe"]
     assert "IP brasileiro" in d["conclusao"]
+
+
+def test_candidato_resposta_nao_json_503(monkeypatch):
+    def boom(self, *a, **k):
+        raise ValueError("Expecting value: line 1 column 1 (char 0)")
+
+    monkeypatch.setattr(TSE, "buscar_candidato", boom)
+    r = cliente.get("/api/candidato", params={"nome": "ze"})
+    assert r.status_code == 503
+    assert "diagnostico" in r.json()["detalhe"]
 
 
 def test_cliente_base_envia_user_agent_de_navegador():
