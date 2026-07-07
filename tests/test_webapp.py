@@ -62,6 +62,20 @@ def test_grafo_exemplo():
     )
 
 
+def test_candidato_via_base_local(monkeypatch):
+    from fiscaliza.busca_local import BuscaLocal
+
+    ident = {"nome_completo": "JOSÉ DA SILVA EXEMPLO", "nome_urna": "ZÉ EXEMPLO",
+             "numero": "12345", "partido": "XYZ", "cargo": "VEREADOR",
+             "sqcand": "250001", "foto_url": None}
+    monkeypatch.setattr(BuscaLocal, "buscar", lambda self, *a, **k: ident)
+    r = cliente.get("/api/candidato", params={"nome": "ze exemplo", "uf": "sp"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["identidade"]["nome_urna"] == "ZÉ EXEMPLO"
+    assert "Dados Abertos" in d["fonte"]
+
+
 def test_candidato_stub_ok(monkeypatch):
     monkeypatch.setattr(TSE, "buscar_candidato", lambda self, *a, **k: DETALHE)
     r = cliente.get("/api/candidato", params={"nome": "ze exemplo", "uf": "sp"})

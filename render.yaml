@@ -9,3 +9,7 @@ services:
     envVars:
       - key: TRANSPARENCIA_API_KEY
         sync: false   # defina no painel do Render; nunca commitar a chave
+      - key: FISCALIZA_INGERIR_UF
+        value: "SP"   # UF(s) dos Dados Abertos do TSE carregadas no boot (ex.: "SP,RJ")
+      - key: FISCALIZA_INGERIR_ANO
+        value: "2024"

@@ -30,6 +30,34 @@ app = FastAPI(title="Fiscaliza", description="Índices de risco a partir de dado
 NOTA_JURIDICA = MotorDeRisco().consolidar([])["nota_juridica"]
 
 
+@app.on_event("startup")
+def _ingestao_no_boot():
+    """Se FISCALIZA_INGERIR_UF estiver definida (ex.: "SP" ou "SP,RJ"),
+    baixa os Dados Abertos do TSE em segundo plano no primeiro boot —
+    útil em hospedagens sem disco persistente (Render free)."""
+    import os
+    import threading
+
+    ufs = os.environ.get("FISCALIZA_INGERIR_UF")
+    if not ufs:
+        return
+    from fiscaliza.busca_local import BuscaLocal, ingerir_candidatos
+
+    if BuscaLocal().disponivel():
+        return
+    ano = int(os.environ.get("FISCALIZA_INGERIR_ANO", "2024"))
+
+    def _trabalho():
+        try:
+            ingerir_candidatos(ano, ufs=[u.strip() for u in ufs.split(",")])
+        except Exception:  # boot nunca pode cair por causa da ingestão
+            import logging
+
+            logging.getLogger(__name__).exception("ingestão no boot falhou")
+
+    threading.Thread(target=_trabalho, daemon=True).start()
+
+
 def _grafo_exemplo() -> dict:
     """Ciclo parlamentar -> emenda -> orgao -> contrato -> empresa -> doacao ->
     parlamentar, materializando o padrao de maior interesse."""
@@ -126,10 +154,31 @@ def api_candidato(
     uf: str = Query(""),
     cargo: str = Query("vereador"),
 ):
+    codigo_cargo = CARGOS.get(cargo.lower().replace(" ", "_"), CARGOS["vereador"])
+
+    # 1º) Dados Abertos oficiais carregados localmente (rápido e estável;
+    # o site DivulgaCand tem escudo anti-robô que bloqueia servidores)
+    from fiscaliza.busca_local import BuscaLocal
+
+    try:
+        local = BuscaLocal().buscar(nome, ano, uf.upper(), codigo_cargo)
+    except Exception:
+        local = None
+    if local is not None:
+        risco = MotorDeRisco().consolidar([])
+        risco["cor"] = _cor(risco["indice_de_risco_percentual"])
+        return {
+            "identidade": local,
+            "foto_url": local["foto_url"],
+            "total_bens": None,
+            "risco": risco,
+            "fonte": "Dados Abertos oficiais do TSE (base local)",
+        }
+
+    # 2º) reserva: API ao vivo do DivulgaCand (funciona de IPs residenciais)
     # timeout curto: melhor um 503 com diagnóstico do que o proxy da
     # hospedagem cortar a conexão e o navegador ver erro genérico
     tse = TSE(timeout_segundos=20)
-    codigo_cargo = CARGOS.get(cargo.lower().replace(" ", "_"), CARGOS["vereador"])
     try:
         detalhe = tse.buscar_candidato(ano, uf.upper(), nome, codigo_cargo)
     except ValueError as e:  # resposta 200 porém não-JSON (página de bloqueio)
@@ -472,8 +521,9 @@ function preencherCartao(d){
   document.getElementById("nome-civil").textContent = id.nome_completo || "—";
   document.getElementById("subtitulo").textContent =
     [id.numero, id.partido, id.cargo].filter(Boolean).join(" · ");
-  document.getElementById("bens").textContent =
-    "Bens declarados: R$ " + (d.total_bens || 0).toLocaleString("pt-BR");
+  document.getElementById("bens").textContent = d.total_bens == null
+    ? (d.fonte || "")
+    : "Bens declarados: R$ " + d.total_bens.toLocaleString("pt-BR");
   const fb = document.getElementById("foto-box");
   fb.innerHTML = d.foto_url
     ? '<img src="'+d.foto_url+'" alt="Foto oficial da urna (TSE)">'

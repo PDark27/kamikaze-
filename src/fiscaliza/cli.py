@@ -183,6 +183,18 @@ def ingerir(
 
 
 @app.command()
+def ingerir_candidatos(
+    ano: int = typer.Option(2024, help="Ano da eleição"),
+    uf: list[str] = typer.Option([], help="UF(s) a carregar (vazio = todas)"),
+):
+    """Baixa os Dados Abertos oficiais do TSE (consulta_cand) para busca local."""
+    from .busca_local import ingerir_candidatos as _ingerir
+
+    total = _ingerir(ano, ufs=list(uf) or None)
+    typer.echo(f"{total} candidatos carregados em dados/fiscaliza.db")
+
+
+@app.command()
 def grafo(saida: str = typer.Option("grafo.graphml", help="Arquivo GraphML de saída")):
     """Exporta um grafo de exemplo com o esquema de relações do projeto."""
     from .grafo import GrafoDeRelacoes

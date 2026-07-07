@@ -93,6 +93,15 @@ fiscaliza ingerir --conjunto-tse candidatos-2024                    # dumps em m
 cartão do candidato com foto oficial e índice de risco, e grafo interativo de
 relações (vis-network). Endpoints JSON: `/api/candidato` e `/api/grafo/exemplo`.
 
+**Como a busca funciona**: o site DivulgaCand do TSE tem escudo anti-robô
+(F5/TSPD) que bloqueia servidores — por isso a busca consulta primeiro os
+**Dados Abertos oficiais** (`cdn.tse.jus.br`, canal correto para programas)
+carregados em banco local, e só usa a API ao vivo como reserva (funciona de
+IPs residenciais). Carregue a base com `fiscaliza ingerir-candidatos --ano
+2024 --uf SP` ou, em hospedagens, defina `FISCALIZA_INGERIR_UF=SP` (e
+opcionalmente `FISCALIZA_INGERIR_ANO`) para a ingestão automática no boot.
+O endpoint `/api/diagnostico` mostra a saúde da conexão com o TSE.
+
 O app é um **PWA de instalação gratuita**: hospedado em qualquer servidor (ou
 rodando localmente), o Chrome/Edge/Android oferece **"Instalar aplicativo" /
 "Adicionar à tela inicial"** — sem loja de aplicativos, sem custo, com ícone
