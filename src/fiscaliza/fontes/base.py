@@ -7,12 +7,27 @@ import time
 import httpx
 
 
+# APIs governamentais costumam recusar user-agents de biblioteca (python-httpx);
+# cabeçalhos de navegador evitam 403/406 indevidos em consultas legítimas.
+_CABECALHOS_NAVEGADOR = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/html;q=0.9, */*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9",
+}
+
+
 class ClienteBase:
     base_url: str = ""
 
     def __init__(self, cabecalhos: dict | None = None, pausa_segundos: float = 0.5):
         self._http = httpx.Client(
-            base_url=self.base_url, headers=cabecalhos or {}, timeout=60
+            base_url=self.base_url,
+            headers={**_CABECALHOS_NAVEGADOR, **(cabecalhos or {})},
+            timeout=60,
+            follow_redirects=True,
         )
         self._pausa = pausa_segundos
 

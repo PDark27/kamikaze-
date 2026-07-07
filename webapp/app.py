@@ -78,9 +78,16 @@ def api_candidato(
     try:
         detalhe = tse.buscar_candidato(ano, uf.upper(), nome, codigo_cargo)
     except (httpx.HTTPError, ConnectionError, OSError) as e:
+        if isinstance(e, httpx.HTTPStatusError):
+            diagnostico = (
+                f"HTTP {e.response.status_code} ao consultar "
+                f"{e.request.url.host}"
+            )
+        else:
+            diagnostico = f"{type(e).__name__}: {e}"
         return JSONResponse(
             status_code=503,
-            content={"erro": "fonte TSE indisponível", "detalhe": str(e)},
+            content={"erro": "fonte TSE indisponível", "detalhe": diagnostico},
         )
     if detalhe is None:
         return JSONResponse(status_code=404, content={"erro": "candidato não encontrado"})
@@ -387,7 +394,7 @@ async function buscar(ev){
   btn.disabled = false; btn.textContent = "Buscar";
   if(!r) return;
   if(!r.ok){
-    erro.textContent = d.erro || "Erro na busca.";
+    erro.textContent = (d.erro || "Erro na busca.") + (d.detalhe ? " — " + d.detalhe : "");
     document.getElementById("cartao").style.display = "none";
     return;
   }

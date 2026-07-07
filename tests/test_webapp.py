@@ -88,4 +88,29 @@ def test_candidato_erro_rede_503(monkeypatch):
     assert r.status_code == 503
     d = r.json()
     assert d["erro"] == "fonte TSE indisponível"
+    assert "ConnectError" in d["detalhe"]  # diagnóstico visível
     assert "Traceback" not in str(d)  # sem stacktrace vazado
+
+
+def test_candidato_erro_http_503_mostra_codigo(monkeypatch):
+    def boom_403(self, *a, **k):
+        req = httpx.Request("GET", "https://divulgacandcontas.tse.jus.br/x")
+        raise httpx.HTTPStatusError(
+            "403", request=req, response=httpx.Response(403, request=req)
+        )
+
+    monkeypatch.setattr(TSE, "buscar_candidato", boom_403)
+    r = cliente.get("/api/candidato", params={"nome": "ze"})
+    assert r.status_code == 503
+    d = r.json()
+    assert "HTTP 403" in d["detalhe"]
+    assert "divulgacandcontas.tse.jus.br" in d["detalhe"]
+
+
+def test_cliente_base_envia_user_agent_de_navegador():
+    from fiscaliza.fontes.base import ClienteBase
+
+    c = ClienteBase()
+    assert c._http.headers["user-agent"].startswith("Mozilla/5.0")
+    assert "pt-BR" in c._http.headers["accept-language"]
+    assert c._http.follow_redirects is True
