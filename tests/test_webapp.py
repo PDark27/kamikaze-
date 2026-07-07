@@ -114,8 +114,9 @@ def _resposta(status, conteudo, tipo):
 
 
 def test_diagnostico_ok(monkeypatch):
-    import webapp.app as wa
+    import sys
 
+    wa = sys.modules["webapp.app"]
     monkeypatch.setattr(
         wa, "_consultar_tse_cru",
         lambda tse: _resposta(200, b'{"eleicoes": []}', "application/json"),
@@ -126,8 +127,9 @@ def test_diagnostico_ok(monkeypatch):
 
 
 def test_diagnostico_pagina_de_bloqueio(monkeypatch):
-    import webapp.app as wa
+    import sys
 
+    wa = sys.modules["webapp.app"]
     monkeypatch.setattr(
         wa, "_consultar_tse_cru",
         lambda tse: _resposta(200, b"<html>Access denied</html>", "text/html"),
@@ -142,8 +144,9 @@ def test_diagnostico_pagina_de_bloqueio(monkeypatch):
 
 
 def test_diagnostico_falha_de_rede(monkeypatch):
-    import webapp.app as wa
+    import sys
 
+    wa = sys.modules["webapp.app"]
     def boom(tse):
         raise httpx.ConnectTimeout("tempo esgotado")
 
